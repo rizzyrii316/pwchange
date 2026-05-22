@@ -403,7 +403,7 @@ body {
   text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;
 }
 
-.generated-pwd-row { display:flex;align-items:center;gap:10px; }
+.generated-pwd-row { display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
 
 .generated-pwd-text {
   flex:1;font-family:var(--font-mono);font-size:15px;font-weight:600;

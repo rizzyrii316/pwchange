@@ -44,7 +44,6 @@ const SPECIALS = '!@#$%^&*';
 // ── DOM References ───────────────────────────────────────────────
 const elUsername       = document.getElementById('username');
 const elPassword       = document.getElementById('password');
-const elKeywords       = document.getElementById('keywords');
 const elToggleBtn      = document.getElementById('toggle-password');
 const elEyeOpen        = document.getElementById('eye-open');
 const elEyeClosed      = document.getElementById('eye-closed');
@@ -61,6 +60,7 @@ const elBtnGenerate    = document.getElementById('btn-generate');
 const elGeneratedOut   = document.getElementById('generated-output');
 const elGeneratedPwd   = document.getElementById('generated-password');
 const elBtnCopyGen     = document.getElementById('btn-copy-generated');
+const elBtnSaveGen     = document.getElementById('btn-save-generated');
 const elToast          = document.getElementById('toast');
 const elPassCountBadge = document.getElementById('pass-count-badge');
 const elEmptyState     = document.getElementById('empty-state');
@@ -342,19 +342,74 @@ function generateSuggestions(password, username) {
   return valid.slice(0, 3);
 }
 
+// ── Creative Name Variation Helpers ──────────────────────────────
+
+/** Double random consonants in a word: rishika → rishhika */
+function doubleConsonants(word) {
+  const consonants = 'bcdfghjklmnpqrstvwxyz';
+  let result = '';
+  let doubled = false;
+  for (const c of word) {
+    result += c;
+    if (!doubled && consonants.includes(c.toLowerCase()) && Math.random() > 0.5) {
+      result += c;
+      doubled = true;
+    }
+  }
+  return result;
+}
+
+/** Double vowels in a word: rishika → riishikaa */
+function doubleVowels(word) {
+  const vowels = 'aeiou';
+  let result = '';
+  for (const c of word) {
+    result += c;
+    if (vowels.includes(c.toLowerCase()) && Math.random() > 0.45) {
+      result += c;
+    }
+  }
+  return result;
+}
+
+/** Reverse a word */
+function reverseWord(word) {
+  return word.split('').reverse().join('');
+}
+
+/** Shuffle the middle of a word, keep first and last */
+function shuffleMiddle(word) {
+  if (word.length <= 3) return word;
+  const mid = word.slice(1, -1).split('');
+  for (let i = mid.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [mid[i], mid[j]] = [mid[j], mid[i]];
+  }
+  return word[0] + mid.join('') + word[word.length - 1];
+}
+
+/** Apply creative variation to a name part */
+function creativeVariation(word) {
+  const strategies = [
+    () => doubleConsonants(word),
+    () => doubleVowels(word),
+    () => reverseWord(word),
+    () => shuffleMiddle(word),
+    () => word + word.slice(-2),        // rishika → rishikaka
+    () => word[0].toUpperCase() + word.slice(1) + word[0], // rishika → Rishikar
+  ];
+  return strategies[Math.floor(Math.random() * strategies.length)]();
+}
+
 // ── Smart Password Generator ─────────────────────────────────────
 
-function smartGenerate(username, keywords) {
+function smartGenerate(username) {
   const nameParts = getNameParts(username);
   let seedParts   = [];
 
-  if (keywords && keywords.trim()) {
-    seedParts = keywords.trim().split(/[\s,]+/).filter(k => k.length >= 2);
-  }
-
-  // Fallback: use fragments of name
-  if (seedParts.length === 0 && nameParts.length > 0) {
-    seedParts = nameParts.map(p => p.slice(0, Math.max(3, Math.ceil(p.length / 2))));
+  // Use creative variations of name parts
+  if (nameParts.length > 0) {
+    seedParts = nameParts.map(p => creativeVariation(p));
   }
 
   if (seedParts.length === 0) seedParts = ['secure', 'key'];
@@ -363,7 +418,7 @@ function smartGenerate(username, keywords) {
   let base = seedParts.map((word, idx) => {
     let w = word.split('').map(c => {
       const lower = c.toLowerCase();
-      if (LEET_MAP[lower] && Math.random() > 0.45) return LEET_MAP[lower];
+      if (LEET_MAP[lower] && Math.random() > 0.55) return LEET_MAP[lower];
       return Math.random() > 0.5 ? c.toUpperCase() : c.toLowerCase();
     }).join('');
     if (idx < seedParts.length - 1) {
@@ -393,6 +448,7 @@ function smartGenerate(username, keywords) {
     const v = validate(base, username);
     if (v.every(r => r.pass)) break;
 
+    // Remove name parts if still present
     for (const part of nameParts) {
       base = base.replace(new RegExp(part, 'gi'), () =>
         SPECIALS[Math.floor(Math.random() * SPECIALS.length)] + Math.floor(Math.random() * 10)
@@ -573,14 +629,13 @@ elUsername.addEventListener('input', onPasswordInput);  // re-validates when nam
 // Generate button
 elBtnGenerate.addEventListener('click', () => {
   const name = elUsername.value;
-  const kw   = elKeywords.value;
 
   // Animate button
   elBtnGenerate.disabled = true;
   elBtnGenerate.textContent = 'Generating…';
 
   setTimeout(() => {
-    const generated = smartGenerate(name, kw);
+    const generated = smartGenerate(name);
     elGeneratedPwd.textContent = generated;
     elGeneratedOut.style.display = '';
 
@@ -596,6 +651,17 @@ elBtnGenerate.addEventListener('click', () => {
 elBtnCopyGen.addEventListener('click', () => {
   const text = elGeneratedPwd.textContent;
   if (text) copyToClipboard(text);
+});
+
+// Save button – copies to clipboard AND sets it as the current password
+elBtnSaveGen.addEventListener('click', () => {
+  const text = elGeneratedPwd.textContent;
+  if (text) {
+    elPassword.value = text;
+    copyToClipboard(text);
+    onPasswordInput();
+    showToast('Password saved and copied!');
+  }
 });
 
 // ── Init ─────────────────────────────────────────────────────────

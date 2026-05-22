@@ -110,24 +110,6 @@
               </div>
               <p class="form-hint" id="password-hint">All validation is done locally in your browser</p>
             </div>
-
-            <div class="form-group" style="margin-bottom:0">
-              <label class="form-label" for="keywords">
-                Keywords / Memorable Phrase
-                <span class="optional-badge">Optional</span>
-                <span class="tooltip-wrap" data-tooltip="Keywords help generate a memorable password for you">
-                  <svg class="info-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-label="Info"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                </span>
-              </label>
-              <input
-                type="text"
-                id="keywords"
-                class="form-input"
-                placeholder="e.g. sunset river mountain"
-                autocomplete="off"
-                spellcheck="false"
-              />
-            </div>
           </div>
         </section>
 
@@ -140,7 +122,7 @@
             <h2 class="card__title" id="generator-heading">Smart Password Generator</h2>
           </div>
           <div class="card__body">
-            <p class="card__desc">Generate a strong, memorable password based on your name and keywords above. Uses character substitution and smart mixing.</p>
+            <p class="card__desc">Generate a strong, memorable password based on your name. Uses creative letter variations and smart mixing.</p>
             <button class="btn btn--primary" id="btn-generate" aria-label="Generate a new password">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               Generate Password
@@ -153,6 +135,10 @@
                 <button class="btn btn--ghost btn--sm" id="btn-copy-generated" aria-label="Copy generated password to clipboard" title="Copy to clipboard">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                   Copy
+                </button>
+                <button class="btn btn--primary btn--sm" id="btn-save-generated" aria-label="Save and use this password" title="Save password">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  Save
                 </button>
               </div>
               <p class="generated-note">✓ This password meets all security requirements</p>
