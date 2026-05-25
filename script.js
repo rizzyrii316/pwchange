@@ -9,7 +9,7 @@
 
 // ── Common word / pattern lists ──────────────────────────────────
 const COMMON_WORDS = [
-  'password', 'admin', 'welcome', 'user', 'login', 'master',
+  'password','keysight', 'admin', 'welcome', 'user', 'login', 'master',
   'letmein', 'dragon', 'monkey', 'shadow', 'sunshine', 'princess',
   'football', 'charlie', 'access', 'hello', 'trustno1', 'iloveyou',
   'batman', 'superman', 'michael', 'jennifer', 'hunter', 'thomas',
@@ -27,12 +27,14 @@ const COMMON_WORDS = [
 ];
 
 const COMMON_PATTERNS = [
-  '123456', '12345678', '123456789', '1234567890', '12345',
-  'abcdef', 'abcdefgh', 'qwerty', 'qwertyuiop',
-  'asdfgh', 'asdfghjkl', 'zxcvbn', 'zxcvbnm',
-  '111111', '000000', '222222', '333333', '999999',
-  'aaaaaa', 'abc123', 'password1', 'letmein', '1q2w3e',
-  'iloveyou', '1qaz2wsx', '11111111', 'sunshine', 'princess'
+    '123456', '12345678', '123456789', '1234567890', '12345','0123',
+    '1234','2345', '3456', '4567', '5678', '6789','7890',
+    '0987', '9876', '8765', '7654', '6543', '5432', '4321', '3210',
+    'abcdef', 'abcdefgh', 'qwerty', 'qwertyuiop',
+    'asdfgh', 'asdfghjkl', 'zxcvbn', 'zxcvbnm',
+    '111111', '000000', '222222', '333333', '999999',
+    'aaaaaa', 'abc123', 'password1', 'letmein', '1q2w3e',
+    'iloveyou', '1qaz2wsx', '11111111', 'sunshine', 'princess'
 ];
 
 // Leet-speak mappings
