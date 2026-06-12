@@ -16,13 +16,7 @@
     <div class="topnav__inner">
       <div class="topnav__brand">
         <div class="brand-logo" aria-label="Keysight logo">
-          <!-- Keysight official logo: red waveform mark + black wordmark -->
-          <svg class="brand-wordmark" viewBox="0 0 210 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <!-- Red waveform / signal mark -->
-            <path d="M4 18 C4 18 8 6 12 6 C16 6 16 30 20 30 C24 30 24 10 28 10 C30 10 31 14 32 18" stroke="#EE4B25" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            <!-- KEYSIGHT wordmark -->
-            <text x="42" y="25" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="20" fill="#1A1A1A" letter-spacing="1">KEYSIGHT</text>
-          </svg>
+          <img class="brand-wordmark" src="keysight-wordmark.png" alt="Keysight logo" />
         </div>
         <div class="brand-divider" aria-hidden="true"></div>
         <span class="brand-app-name">Password Change Assistant</span>
@@ -89,6 +83,7 @@
             <div class="form-group">
               <label class="form-label" for="password">
                 Enter Password
+                <span class="password-warn-inline" id="password-warn-inline" style="display:none;" aria-live="polite">Weak password. Use Smart Generator for a strong password.</span>
                 <span class="tooltip-wrap" data-tooltip="Your password is never sent to any server">
                   <svg class="info-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-label="Info"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </span>
@@ -109,6 +104,7 @@
                 </button>
               </div>
               <p class="form-hint" id="password-hint">All validation is done locally in your browser</p>
+              <button class="btn btn--primary btn--sm submit-password-btn" id="btn-submit-password" type="button" aria-label="Submit password">Submit Password</button>
             </div>
           </div>
         </section>
@@ -122,7 +118,7 @@
             <h2 class="card__title" id="generator-heading">Smart Password Generator</h2>
           </div>
           <div class="card__body">
-            <p class="card__desc">Generate a strong, memorable password based on your name. Uses creative letter variations and smart mixing.</p>
+            <p class="card__desc">Generate a stronger password from your entered password with minimal, easy-to-remember changes.</p>
             <button class="btn btn--primary" id="btn-generate" aria-label="Generate a new password">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               Generate Password
@@ -136,12 +132,9 @@
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                   Copy
                 </button>
-                <button class="btn btn--primary btn--sm" id="btn-save-generated" aria-label="Save and use this password" title="Save password">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                  Save
-                </button>
-              </div>
-              <p class="generated-note">✓ This password meets all security requirements</p>
+</div>
+              <ul class="generated-suggestions-list" id="generated-suggestions-list" aria-label="Smart password suggestions"></ul>
+              <p class="generated-note" id="generated-note">✓ This password meets all security requirements</p>
             </div>
           </div>
         </section>
@@ -240,3 +233,9 @@
   <script src="script.js"></script>
 </body>
 </html>
+
+
+
+
+
+

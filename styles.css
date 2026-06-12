@@ -70,7 +70,7 @@ body {
 
 .topnav__inner {
   max-width:1180px;margin:0 auto;padding:0 24px;
-  height:60px;display:flex;align-items:center;
+  height:68px;display:flex;align-items:center;
   justify-content:space-between;gap:16px;
 }
 
@@ -78,7 +78,7 @@ body {
 
 .brand-logo { display:flex;align-items:center; }
 
-.brand-wordmark { height:32px;width:auto; }
+.brand-wordmark { height:42px;width:auto; }
 
 .brand-divider {
   width:1px;height:24px;
@@ -87,7 +87,7 @@ body {
 }
 
 .brand-app-name {
-  font-size:14px;font-weight:500;
+  font-size:18px;font-weight:600;
   color:var(--ks-charcoal);
   letter-spacing:0;white-space:nowrap;
 }
@@ -113,7 +113,9 @@ body {
 
 /* ── Hero Banner ── */
 .hero-banner {
-  background:var(--hero-bg);
+  background:
+    linear-gradient(90deg, rgba(84,0,8,0.80), rgba(238,0,45,0.68)),
+    url('keysight-brand-bg.png') center/cover no-repeat;
   border-bottom:1px solid var(--ks-border);
   padding:32px 24px 28px;
   position:relative;overflow:hidden;
@@ -135,12 +137,12 @@ body {
 
 .hero-title {
   font-size:clamp(20px,3vw,26px);
-  font-weight:700;color:var(--ks-black);
+  font-weight:700;color:#FFFFFF;
   letter-spacing:-0.3px;line-height:1.25;margin-bottom:6px;
 }
 
 .hero-subtitle {
-  font-size:14px;color:var(--ks-charcoal);
+  font-size:14px;color:rgba(255,255,255,0.92);
   font-weight:400;max-width:480px;
 }
 
@@ -235,6 +237,18 @@ body {
   display:flex;align-items:center;gap:6px;
   font-size:12px;font-weight:600;color:var(--ks-charcoal);
   text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;cursor:default;
+}
+.password-warn-inline {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--red-bg);
+  color: var(--red-err);
+  border: 1px solid var(--red-border);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .optional-badge {
@@ -411,6 +425,30 @@ body {
 }
 
 .generated-note { font-size:11.5px;color:var(--green);font-weight:500;margin-top:10px; }
+.generated-suggestions-list {
+  margin: 10px 0 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+.generated-suggestions-list li {
+  padding: 8px 10px;
+  border: 1px solid var(--ks-border);
+  border-radius: 3px;
+  background: #fff;
+  color: var(--ks-charcoal);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+.generated-suggestions-list li:hover {
+  border-color: var(--ks-red);
+  color: var(--ks-red);
+}
+.submit-password-btn {
+  margin-top: 10px;
+}
 
 /* ── Empty State ── */
 .empty-state {

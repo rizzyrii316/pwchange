@@ -61,8 +61,11 @@ const elSuggestionsList= document.getElementById('suggestions-list');
 const elBtnGenerate    = document.getElementById('btn-generate');
 const elGeneratedOut   = document.getElementById('generated-output');
 const elGeneratedPwd   = document.getElementById('generated-password');
+const elGeneratedSuggestionsList = document.getElementById('generated-suggestions-list');
+const elGeneratedNote  = document.getElementById('generated-note');
 const elBtnCopyGen     = document.getElementById('btn-copy-generated');
-const elBtnSaveGen     = document.getElementById('btn-save-generated');
+const elBtnSubmitPwd   = document.getElementById('btn-submit-password');
+const elPasswordWarnInline = document.getElementById('password-warn-inline');
 const elToast          = document.getElementById('toast');
 const elPassCountBadge = document.getElementById('pass-count-badge');
 const elEmptyState     = document.getElementById('empty-state');
@@ -405,71 +408,35 @@ function creativeVariation(word) {
 
 // ── Smart Password Generator ─────────────────────────────────────
 
-function smartGenerate(username) {
-  const nameParts = getNameParts(username);
-  let seedParts   = [];
+function smartGenerate(basePassword, username) {
+  let base = (basePassword || '').trim();
+  if (!base) base = 'SecurePass';
 
-  // Use creative variations of name parts
-  if (nameParts.length > 0) {
-    seedParts = nameParts.map(p => creativeVariation(p));
+  // Tiny deterministic changes only when needed.
+  if (!/[A-Z]/.test(base)) {
+    const idx = base.search(/[a-z]/);
+    if (idx >= 0) base = base.slice(0, idx) + base[idx].toUpperCase() + base.slice(idx + 1);
+    else base += 'A';
+  }
+  if (!/[a-z]/.test(base)) base += 'a';
+  if (!/[0-9]/.test(base)) base += '1';
+  if (!/[^A-Za-z0-9]/.test(base)) base += '#';
+
+  while (base.length < 12) base += '0';
+
+  // If username appears, mask just one character in that part (minimal edit).
+  const parts = getNameParts(username);
+  for (const part of parts) {
+    const re = new RegExp(part, 'i');
+    const m = base.match(re);
+    if (m && m.index !== undefined) {
+      const pos = m.index + Math.floor(m[0].length / 2);
+      base = base.slice(0, pos) + '*' + base.slice(pos + 1);
+      break;
+    }
   }
 
-  if (seedParts.length === 0) seedParts = ['secure', 'key'];
-
-  // Build base with leet substitution + random caps
-  let base = seedParts.map((word, idx) => {
-    let w = word.split('').map(c => {
-      const lower = c.toLowerCase();
-      if (LEET_MAP[lower] && Math.random() > 0.55) return LEET_MAP[lower];
-      return Math.random() > 0.5 ? c.toUpperCase() : c.toLowerCase();
-    }).join('');
-    if (idx < seedParts.length - 1) {
-      w += SPECIALS[Math.floor(Math.random() * SPECIALS.length)];
-    }
-    return w;
-  }).join('');
-
-  // Ensure all character classes present
-  if (!/[A-Z]/.test(base)) base = base[0].toUpperCase() + base.slice(1);
-  if (!/[0-9]/.test(base)) base += Math.floor(Math.random() * 90 + 10);
-  if (!/[^A-Za-z0-9]/.test(base)) {
-    const pos = Math.floor(base.length / 2);
-    base = base.slice(0, pos) + SPECIALS[Math.floor(Math.random() * SPECIALS.length)] + base.slice(pos);
-  }
-  if (!/[a-z]/.test(base)) base += 'x';
-
-  // Pad to minimum length
-  while (base.length < 12) {
-    base += SPECIALS[Math.floor(Math.random() * SPECIALS.length)] +
-            String.fromCharCode(65 + Math.floor(Math.random() * 26));
-  }
-
-  // Iteratively fix any remaining issues
-  let attempts = 0;
-  while (attempts < 25) {
-    const v = validate(base, username);
-    if (v.every(r => r.pass)) break;
-
-    // Remove name parts if still present
-    for (const part of nameParts) {
-      base = base.replace(new RegExp(part, 'gi'), () =>
-        SPECIALS[Math.floor(Math.random() * SPECIALS.length)] + Math.floor(Math.random() * 10)
-      );
-    }
-    for (const word of COMMON_WORDS) {
-      if (base.toLowerCase().includes(word)) {
-        base = base.replace(new RegExp(word, 'gi'), () =>
-          SPECIALS[Math.floor(Math.random() * SPECIALS.length)] + Math.floor(Math.random() * 10)
-        );
-      }
-    }
-    while (base.length < 12) {
-      base += String.fromCharCode(65 + Math.floor(Math.random() * 26));
-    }
-    attempts++;
-  }
-
-  return base;
+  return breakCommonWordsMinimal(base);
 }
 
 // ── UI Rendering ─────────────────────────────────────────────────
@@ -523,6 +490,7 @@ function renderStrength(score, level) {
 }
 
 function renderSuggestions(suggestions) {
+  if (!elSuggestionsList) return;
   elSuggestionsList.innerHTML = '';
   suggestions.forEach((s, i) => {
     const li = document.createElement('li');
@@ -594,8 +562,9 @@ function onPasswordInput() {
     // Hide all results, show empty state
     elValidationSec.style.display  = 'none';
     elStrengthSec.style.display    = 'none';
-    elSuggestionsSec.style.display = 'none';
+    if (elSuggestionsSec) elSuggestionsSec.style.display = 'none';
     elEmptyState.style.display     = '';
+    if (elPasswordWarnInline) elPasswordWarnInline.style.display = 'none';
     return;
   }
 
@@ -611,34 +580,148 @@ function onPasswordInput() {
   // Compute and render strength
   const { score, level } = computeStrength(pwd, results);
   renderStrength(score, level);
+  if (elPasswordWarnInline) {
+    elPasswordWarnInline.style.display = (level === 'Weak' || !results.every(r => r.pass)) ? 'inline-flex' : 'none';
+  }
 
   // Suggestions when not all rules pass
   const allPass = results.every(r => r.pass);
   if (!allPass) {
     const suggestions = generateSuggestions(pwd, name);
     renderSuggestions(suggestions);
-    elSuggestionsSec.style.display = '';
+    if (elSuggestionsSec) elSuggestionsSec.style.display = '';
   } else {
-    elSuggestionsSec.style.display = 'none';
+    if (elSuggestionsSec) elSuggestionsSec.style.display = 'none';
   }
+}
+
+function countSymbols(text) {
+  return (text.match(/[^A-Za-z0-9]/g) || []).length;
+}
+
+function breakCommonWordsMinimal(text) {
+  let out = text;
+  for (const word of COMMON_WORDS) {
+    if (word.length < 4) continue;
+    const re = new RegExp(word, 'i');
+    const m = out.match(re);
+    if (!m || m.index === undefined) continue;
+    const i = m.index + Math.floor(m[0].length / 2);
+    const ch = out[i];
+    const sub = /[a-z]/i.test(ch) ? (LEET_MAP[ch.toLowerCase()] || '7') : '#';
+    out = out.slice(0, i) + sub + out.slice(i + 1);
+  }
+  return out;
+}
+
+function applyVariant(base, variantIndex) {
+  if (variantIndex === 0) return base;
+  if (variantIndex === 1) {
+    const i = Math.floor(base.length / 2);
+    return `${base.slice(0, i)}@${base.slice(i)}2`;
+  }
+  const tail = /[0-9]$/.test(base) ? '#' : '3#';
+  return `${base}${tail}`;
+}
+
+function makeEasySuggestion(basePassword, username, preferredSymbolCount, variantIndex) {
+  let out = applyVariant(smartGenerate(basePassword, username), variantIndex);
+  out = breakCommonWordsMinimal(out);
+
+  const safeSymbolCount = Math.max(1, Math.min(2, preferredSymbolCount || 1));
+  while (countSymbols(out) < safeSymbolCount) out += '#';
+  while (!/[0-9]/.test(out)) out += '1';
+  while (!/[A-Z]/.test(out)) out = out[0].toUpperCase() + out.slice(1);
+  while (!/[a-z]/.test(out)) out += 'a';
+  while (out.length < 12) out += '0';
+
+  return out;
+}
+
+function generateEasySuggestions(basePassword, username, currentPassword) {
+  const preferredSymbolCount = countSymbols(currentPassword);
+  const valid = [];
+  const seen = new Set();
+
+  for (let i = 0; i < 8 && valid.length < 3; i++) {
+    const cand = makeEasySuggestion(basePassword, username, preferredSymbolCount, i % 3);
+    if (seen.has(cand)) continue;
+    seen.add(cand);
+    const rules = validate(cand, username);
+    if (rules.every(r => r.pass)) valid.push(cand);
+  }
+
+  while (valid.length < 3) {
+    const fallback = makeEasySuggestion(`${basePassword}${valid.length + 1}`, username, preferredSymbolCount, valid.length % 3);
+    if (!seen.has(fallback)) {
+      seen.add(fallback);
+      valid.push(fallback);
+    }
+  }
+
+  return valid.slice(0, 3);
+}
+
+function submitPassword() {
+  const pwd = elPassword.value;
+  if (!pwd) {
+    showToast('Please enter a password first.');
+    return;
+  }
+  const results = validate(pwd, elUsername.value);
+  const { level } = computeStrength(pwd, results);
+  if (level === 'Weak' || !results.every(r => r.pass)) {
+    if (elPasswordWarnInline) elPasswordWarnInline.style.display = 'inline-flex';
+    showToast('Use Smart Generator for a strong password.');
+    return;
+  }
+  showToast('Password submitted successfully.');
 }
 
 // ── Event Listeners ──────────────────────────────────────────────
 
 elPassword.addEventListener('input', onPasswordInput);
+elPassword.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    submitPassword();
+  }
+});
 elUsername.addEventListener('input', onPasswordInput);  // re-validates when name changes
+elBtnSubmitPwd.addEventListener('click', submitPassword);
 
 // Generate button
 elBtnGenerate.addEventListener('click', () => {
   const name = elUsername.value;
+  const sourcePassword = elPassword.value;
 
   // Animate button
   elBtnGenerate.disabled = true;
   elBtnGenerate.textContent = 'Generating…';
 
   setTimeout(() => {
-    const generated = smartGenerate(name);
+    const easySuggestions = generateEasySuggestions(sourcePassword, name, elPassword.value);
+    const generated = easySuggestions[0] || smartGenerate(sourcePassword, name);
     elGeneratedPwd.textContent = generated;
+    if (elGeneratedSuggestionsList) {
+      elGeneratedSuggestionsList.innerHTML = '';
+      easySuggestions.forEach((item) => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        li.addEventListener('click', () => {
+          elPassword.value = item;
+          onPasswordInput();
+          copyToClipboard(item);
+        });
+        elGeneratedSuggestionsList.appendChild(li);
+      });
+    }
+    if (elGeneratedNote) {
+      const isValid = validate(generated, name).every(r => r.pass);
+      elGeneratedNote.textContent = isValid
+        ? '✓ This password meets all security requirements'
+        : '⚠ This suggestion still needs improvement. Try regenerate.';
+    }
     elGeneratedOut.style.display = '';
 
     elBtnGenerate.disabled = false;
@@ -655,17 +738,9 @@ elBtnCopyGen.addEventListener('click', () => {
   if (text) copyToClipboard(text);
 });
 
-// Save button – copies to clipboard AND sets it as the current password
-elBtnSaveGen.addEventListener('click', () => {
-  const text = elGeneratedPwd.textContent;
-  if (text) {
-    elPassword.value = text;
-    copyToClipboard(text);
-    onPasswordInput();
-    showToast('Password saved and copied!');
-  }
-});
+// Save button removed by request
 
 // ── Init ─────────────────────────────────────────────────────────
 // Show empty state on load
 elEmptyState.style.display = '';
+
