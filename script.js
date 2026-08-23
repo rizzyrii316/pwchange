@@ -62,7 +62,6 @@ const elBtnGenerate    = document.getElementById('btn-generate');
 const elGeneratedOut   = document.getElementById('generated-output');
 const elGeneratedPwd   = document.getElementById('generated-password');
 const elGeneratedSuggestionsList = document.getElementById('generated-suggestions-list');
-const elGeneratedNote  = document.getElementById('generated-note');
 const elBtnCopyGen     = document.getElementById('btn-copy-generated');
 const elBtnSubmitPwd   = document.getElementById('btn-submit-password');
 const elPasswordWarnInline = document.getElementById('password-warn-inline');
@@ -408,7 +407,7 @@ function creativeVariation(word) {
 
 // ── Smart Password Generator ─────────────────────────────────────
 
-function smartGenerate(basePassword, username) {
+function smartGenerate(basePassword, username, nameVariationIndex = 0) {
   let base = (basePassword || '').trim();
   if (!base) base = 'SecurePass';
 
@@ -420,23 +419,39 @@ function smartGenerate(basePassword, username) {
   }
   if (!/[a-z]/.test(base)) base += 'a';
   if (!/[0-9]/.test(base)) base += '1';
+  // Keep a symbol that the user already typed.  When one is needed, add it
+  // at the end instead of splitting a memorable word in the middle.
   if (!/[^A-Za-z0-9]/.test(base)) base += '#';
 
   while (base.length < 12) base += '0';
 
-  // If username appears, mask just one character in that part (minimal edit).
+  // If a name appears, double a letter in that name rather than replacing a
+  // character with a symbol.  Example: Rishika -> Rishiika.
   const parts = getNameParts(username);
   for (const part of parts) {
     const re = new RegExp(part, 'i');
     const m = base.match(re);
     if (m && m.index !== undefined) {
-      const pos = m.index + Math.floor(m[0].length / 2);
-      base = base.slice(0, pos) + '*' + base.slice(pos + 1);
+      // Two suggestions use one doubled letter. The third uses a number
+      // substitution, which also breaks the name without inserting a symbol.
+      const positions = [
+        Math.floor(m[0].length / 2),
+        1,
+        Math.floor(m[0].length / 2)
+      ];
+      const pos = m.index + positions[nameVariationIndex % positions.length];
+      if (nameVariationIndex % positions.length === 2) {
+        // Do not use 0, 1, 3, or 7 here: the validator reverses those leet
+        // characters and could still detect the original name.
+        base = base.slice(0, pos) + '2' + base.slice(pos + 1);
+      } else {
+        base = base.slice(0, pos) + base[pos] + base.slice(pos);
+      }
       break;
     }
   }
 
-  return breakCommonWordsMinimal(base);
+  return breakCommonPatternsMinimal(breakCommonWordsMinimal(base));
 }
 
 // ── UI Rendering ─────────────────────────────────────────────────
@@ -606,27 +621,67 @@ function breakCommonWordsMinimal(text) {
     const re = new RegExp(word, 'i');
     const m = out.match(re);
     if (!m || m.index === undefined) continue;
-    const i = m.index + Math.floor(m[0].length / 2);
-    const ch = out[i];
-    const sub = /[a-z]/i.test(ch) ? (LEET_MAP[ch.toLowerCase()] || '7') : '#';
-    out = out.slice(0, i) + sub + out.slice(i + 1);
+    // Double an interior character at a position that removes the original
+    // word match (for example, pass -> paass, not passs).
+    for (let i = 1; i < m[0].length - 1; i++) {
+      const pos = m.index + i;
+      const candidate = out.slice(0, pos) + out[pos] + out.slice(pos);
+      if (!candidate.toLowerCase().includes(word)) {
+        out = candidate;
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+function breakCommonPatternsMinimal(text) {
+  let out = text;
+  for (const pattern of COMMON_PATTERNS) {
+    if (pattern.length < 4) continue;
+    const index = out.toLowerCase().indexOf(pattern);
+    if (index === -1) continue;
+    for (let i = 1; i < pattern.length - 1; i++) {
+      const pos = index + i;
+      const candidate = out.slice(0, pos) + out[pos] + out.slice(pos);
+      if (!candidate.toLowerCase().includes(pattern)) {
+        out = candidate;
+        break;
+      }
+    }
   }
   return out;
 }
 
 function applyVariant(base, variantIndex) {
+  // Each suggestion uses one distinct, minimal edit.  This makes the choices
+  // genuinely different without adding symbols or changing the whole word.
   if (variantIndex === 0) return base;
-  if (variantIndex === 1) {
-    const i = Math.floor(base.length / 2);
-    return `${base.slice(0, i)}@${base.slice(i)}2`;
+
+  const matcher = variantIndex === 1 ? /[aeiou]/i : /[bcdfghjklmnpqrstvwxyz]/i;
+  const index = [...base].findIndex((char, position) => position > 0 && matcher.test(char));
+  if (index !== -1) {
+    return base.slice(0, index) + base[index] + base.slice(index);
   }
-  const tail = /[0-9]$/.test(base) ? '#' : '3#';
-  return `${base}${tail}`;
+
+  // A password made only of digits/symbols has no vowel or consonant to
+  // double, so append one letter as the smallest distinct alternative.
+  return `${base}${variantIndex === 1 ? 'a' : 'b'}`;
+}
+
+function containsNamePart(password, username) {
+  const lower = password.toLowerCase();
+  return getNameParts(username).some(part => lower.includes(part));
 }
 
 function makeEasySuggestion(basePassword, username, preferredSymbolCount, variantIndex) {
-  let out = applyVariant(smartGenerate(basePassword, username), variantIndex);
-  out = breakCommonWordsMinimal(out);
+  const hasName = containsNamePart(basePassword, username);
+  let out = smartGenerate(basePassword, username, variantIndex);
+
+  // A name-containing password is already made unique by doubling one
+  // different name letter. Do not make a second, unnecessary change.
+  if (!hasName) out = applyVariant(out, variantIndex);
+  out = breakCommonPatternsMinimal(breakCommonWordsMinimal(out));
 
   const safeSymbolCount = Math.max(1, Math.min(2, preferredSymbolCount || 1));
   while (countSymbols(out) < safeSymbolCount) out += '#';
@@ -716,12 +771,6 @@ elBtnGenerate.addEventListener('click', () => {
         elGeneratedSuggestionsList.appendChild(li);
       });
     }
-    if (elGeneratedNote) {
-      const isValid = validate(generated, name).every(r => r.pass);
-      elGeneratedNote.textContent = isValid
-        ? '✓ This password meets all security requirements'
-        : '⚠ This suggestion still needs improvement. Try regenerate.';
-    }
     elGeneratedOut.style.display = '';
 
     elBtnGenerate.disabled = false;
@@ -743,4 +792,3 @@ elBtnCopyGen.addEventListener('click', () => {
 // ── Init ─────────────────────────────────────────────────────────
 // Show empty state on load
 elEmptyState.style.display = '';
-
