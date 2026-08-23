@@ -68,6 +68,7 @@ const elPasswordWarnInline = document.getElementById('password-warn-inline');
 const elToast          = document.getElementById('toast');
 const elPassCountBadge = document.getElementById('pass-count-badge');
 const elEmptyState     = document.getElementById('empty-state');
+let regenerationRound = 0;
 
 // ── Show / Hide Password Toggle ──────────────────────────────────
 elToggleBtn.addEventListener('click', () => {
@@ -434,13 +435,18 @@ function smartGenerate(basePassword, username, nameVariationIndex = 0) {
     if (m && m.index !== undefined) {
       // Two suggestions use one doubled letter. The third uses a number
       // substitution, which also breaks the name without inserting a symbol.
-      const positions = [
-        Math.floor(m[0].length / 2),
-        1,
-        Math.floor(m[0].length / 2)
+      const variant = nameVariationIndex % 3;
+      const round = Math.floor(nameVariationIndex / 3);
+      const interiorPositions = Array.from(
+        { length: Math.max(1, m[0].length - 2) },
+        (_, i) => i + 1
+      );
+      const doubledPosition = interiorPositions[
+        (Math.floor(m[0].length / 2) - 1 + round) % interiorPositions.length
       ];
-      const pos = m.index + positions[nameVariationIndex % positions.length];
-      if (nameVariationIndex % positions.length === 2) {
+      const alternatePosition = interiorPositions[round % interiorPositions.length];
+      const pos = m.index + (variant === 1 ? alternatePosition : doubledPosition);
+      if (variant === 2) {
         // Do not use 0, 1, 3, or 7 here: the validator reverses those leet
         // characters and could still detect the original name.
         base = base.slice(0, pos) + '2' + base.slice(pos + 1);
@@ -653,20 +659,27 @@ function breakCommonPatternsMinimal(text) {
   return out;
 }
 
-function applyVariant(base, variantIndex) {
+function applyVariant(base, variantIndex, round = 0) {
   // Each suggestion uses one distinct, minimal edit.  This makes the choices
   // genuinely different without adding symbols or changing the whole word.
-  if (variantIndex === 0) return base;
+  if (variantIndex === 0) return round === 0 ? base : `${base}${round + 1}`;
 
   const matcher = variantIndex === 1 ? /[aeiou]/i : /[bcdfghjklmnpqrstvwxyz]/i;
-  const index = [...base].findIndex((char, position) => position > 0 && matcher.test(char));
-  if (index !== -1) {
+  const matches = [...base]
+    .map((char, position) =>
+      position > 0 && matcher.test(char) && char.toLowerCase() !== base[position - 1].toLowerCase()
+        ? position
+        : -1
+    )
+    .filter(position => position >= 0);
+  if (matches.length && round < matches.length) {
+    const index = matches[round];
     return base.slice(0, index) + base[index] + base.slice(index);
   }
 
-  // A password made only of digits/symbols has no vowel or consonant to
-  // double, so append one letter as the smallest distinct alternative.
-  return `${base}${variantIndex === 1 ? 'a' : 'b'}`;
+  // Once every suitable letter has been used, a trailing number keeps the
+  // regenerated suggestion distinct without disrupting a readable word.
+  return `${base}${round + 1}`;
 }
 
 function containsNamePart(password, username) {
@@ -680,7 +693,7 @@ function makeEasySuggestion(basePassword, username, preferredSymbolCount, varian
 
   // A name-containing password is already made unique by doubling one
   // different name letter. Do not make a second, unnecessary change.
-  if (!hasName) out = applyVariant(out, variantIndex);
+  if (!hasName) out = applyVariant(out, variantIndex % 3, Math.floor(variantIndex / 3));
   out = breakCommonPatternsMinimal(breakCommonWordsMinimal(out));
 
   const safeSymbolCount = Math.max(1, Math.min(2, preferredSymbolCount || 1));
@@ -693,13 +706,13 @@ function makeEasySuggestion(basePassword, username, preferredSymbolCount, varian
   return out;
 }
 
-function generateEasySuggestions(basePassword, username, currentPassword) {
+function generateEasySuggestions(basePassword, username, currentPassword, variantOffset = 0) {
   const preferredSymbolCount = countSymbols(currentPassword);
   const valid = [];
   const seen = new Set();
 
   for (let i = 0; i < 8 && valid.length < 3; i++) {
-    const cand = makeEasySuggestion(basePassword, username, preferredSymbolCount, i % 3);
+    const cand = makeEasySuggestion(basePassword, username, preferredSymbolCount, variantOffset + i);
     if (seen.has(cand)) continue;
     seen.add(cand);
     const rules = validate(cand, username);
@@ -707,7 +720,7 @@ function generateEasySuggestions(basePassword, username, currentPassword) {
   }
 
   while (valid.length < 3) {
-    const fallback = makeEasySuggestion(`${basePassword}${valid.length + 1}`, username, preferredSymbolCount, valid.length % 3);
+    const fallback = makeEasySuggestion(`${basePassword}${valid.length + 1}`, username, preferredSymbolCount, variantOffset + valid.length);
     if (!seen.has(fallback)) {
       seen.add(fallback);
       valid.push(fallback);
@@ -755,7 +768,8 @@ elBtnGenerate.addEventListener('click', () => {
   elBtnGenerate.textContent = 'Generating…';
 
   setTimeout(() => {
-    const easySuggestions = generateEasySuggestions(sourcePassword, name, elPassword.value);
+    const easySuggestions = generateEasySuggestions(sourcePassword, name, elPassword.value, regenerationRound * 3);
+    regenerationRound++;
     const generated = easySuggestions[0] || smartGenerate(sourcePassword, name);
     elGeneratedPwd.textContent = generated;
     if (elGeneratedSuggestionsList) {
